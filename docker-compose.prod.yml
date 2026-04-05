@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-aps-postgres-prod
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_in_production}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_aps}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ai-aps-network
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-aps-redis-prod
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-change_me_in_production}
+    volumes:
+      - redis_data:/data
+    networks:
+      - ai-aps-network
+    restart: always
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: ai-aps-backend-prod
+    command: gunicorn app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change_me_in_production}@postgres:5432/${POSTGRES_DB:-ai_aps}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-change_me_in_production}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-change_me_in_production}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-change_me_in_production}@redis:6379/2
+      - SECRET_KEY=${SECRET_KEY:-change_me_in_production}
+    networks:
+      - ai-aps-network
+    depends_on:
+      - postgres
+      - redis
+    restart: always
+
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: ai-aps-celery-prod
+    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-change_me_in_production}@postgres:5432/${POSTGRES_DB:-ai_aps}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-change_me_in_production}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:-change_me_in_production}@redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD:-change_me_in_production}@redis:6379/2
+    networks:
+      - ai-aps-network
+    depends_on:
+      - postgres
+      - redis
+    restart: always
+
+  nginx:
+    image: nginx:alpine
+    container_name: ai-aps-nginx-prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend/dist:/usr/share/nginx/html:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - ai-aps-network
+    depends_on:
+      - backend
+    restart: always
+
+networks:
+  ai-aps-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

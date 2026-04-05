@@ -1,0 +1,156 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* 工业AI深色主题 */
+    --background: 222 47% 11%;  /* #0a0e27 深蓝黑 */
+    --foreground: 210 40% 98%;
+    --card: 225 39% 15%;  /* #1a1f3a 卡片背景 */
+    --card-foreground: 210 40% 98%;
+    --popover: 225 39% 15%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 100% 50%;  /* #0066ff 科技蓝 */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 225 32% 20%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 225 32% 20%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 189 100% 50%;  /* #00d4ff 荧光蓝 */
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 225 32% 25%;
+    --input: 225 32% 25%;
+    --ring: 217 100% 50%;
+    --radius: 0.5rem;
+  }
+
+  /* 移除浅色主题，只保留深色 */
+  .light {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 225 39% 15%;
+    --card-foreground: 210 40% 98%;
+    --popover: 225 39% 15%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 100% 50%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 225 32% 20%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 225 32% 20%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 189 100% 50%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 225 32% 25%;
+    --input: 225 32% 25%;
+    --ring: 217 100% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-dark-bg text-foreground;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* 滚动条样式 */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-dark-secondary;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-tech-blue/50 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-tech-blue/70;
+  }
+
+  /* 选中文本样式 */
+  ::selection {
+    @apply bg-tech-blue/30 text-white;
+  }
+}
+
+@layer components {
+  /* 玻璃态效果 */
+  .glass {
+    @apply bg-white/5 backdrop-blur-md border border-white/10;
+  }
+
+  /* 荧光按钮 */
+  .btn-neon {
+    @apply bg-gradient-tech text-white font-medium px-6 py-2 rounded-lg;
+    @apply shadow-neon-blue hover:shadow-neon-cyan;
+    @apply transition-all duration-300;
+    @apply hover:scale-105 active:scale-95;
+  }
+
+  /* 卡片样式 */
+  .card-tech {
+    @apply bg-dark-card border border-tech-blue/20 rounded-lg p-6;
+    @apply shadow-glow-sm hover:shadow-glow-md;
+    @apply transition-all duration-300;
+  }
+
+  /* 渐变文字 */
+  .text-gradient {
+    @apply bg-gradient-tech bg-clip-text text-transparent;
+  }
+
+  /* 数据面板 */
+  .data-panel {
+    @apply bg-gradient-to-br from-dark-card to-dark-secondary;
+    @apply border border-tech-blue/30 rounded-xl p-6;
+    @apply shadow-glow-md;
+  }
+
+  /* 输入框样式 */
+  .input-tech {
+    @apply bg-dark-secondary border border-tech-blue/30;
+    @apply text-foreground placeholder:text-muted-foreground;
+    @apply focus:border-tech-cyan focus:ring-2 focus:ring-tech-cyan/20;
+    @apply transition-all duration-200;
+  }
+}
+
+@layer utilities {
+  /* 动画工具类 */
+  .animate-glow-pulse {
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+
+  /* 渐变边框 */
+  .border-gradient {
+    border-image: linear-gradient(135deg, #0066ff, #00ccff) 1;
+  }
+
+  /* 文字发光 */
+  .text-glow {
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
+  }
+
+  /* 背景网格 */
+  .bg-grid {
+    background-image:
+      linear-gradient(rgba(0, 102, 255, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 102, 255, 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+}
