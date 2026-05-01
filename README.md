@@ -7,15 +7,16 @@
 - 🎯 **灵活的排产引擎**: 基于Google OR-Tools，支持多种优化目标和约束条件
 - 📊 **可视化甘特图**: 使用VTable Gantt展示排产结果，支持交互操作
 - 💬 **AI对话交互**: 通过自然语言进行排产和结果查询
-- 📦 **完整的数据管理**: 订单、物料、BOM、生产资源、日历等
-- ⚙️ **可配置模型**: 用户可自定义排产参数和优化策略
+- 📦 **完整的数据管理**: 工艺路线、物料、BOM、生产资源、日历等
+- ⚙️ **可配置模型**: 用户可自定义排产参数和AI模型
 - 📈 **结果分析**: 资源利用率、准时率等多维度分析
+- 🔗 **集成中心**: 支持与外部系统对接（入站/出站配置）
 
 ## 技术栈
 
 ### 前端
-- React 18 + TypeScript + Vite
-- shadcn/ui (Radix UI + Tailwind CSS)
+- React 19 + TypeScript + Vite
+- Radix UI + Tailwind CSS
 - @visactor/vtable-gantt
 - Zustand + TanStack Query
 - React Hook Form + Zod
@@ -28,7 +29,7 @@
 - Celery
 
 ### AI
-- Claude API / OpenAI API
+- Claude API / OpenAI API / Custom API
 - LangChain
 - ChromaDB
 
@@ -50,13 +51,17 @@ cp .env.example .env
 
 2. 启动所有服务:
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
 3. 访问应用:
 - 前端: http://localhost:5173
 - 后端API: http://localhost:8000
 - API文档: http://localhost:8000/docs
+
+4. 登录账号:
+- 用户名: `admin`
+- 密码: `admin123`
 
 ### 本地开发
 
@@ -103,38 +108,62 @@ npm run dev
 ```
 ai-aps/
 ├── frontend/           # React前端应用
+│   └── src/
+│       ├── pages/           # 页面组件
+│       ├── components/      # 共享组件
+│       ├── stores/          # Zustand状态管理
+│       ├── services/       # API服务
+│       └── types/          # TypeScript类型
 ├── backend/            # FastAPI后端应用
-├── docker compose.yml  # Docker编排配置
-├── .env.example        # 环境变量模板
-└── README.md
+│   └── app/
+│       ├── api/v1/        # API路由
+│       ├── models/         # 数据模型
+│       ├── schemas/        # Pydantic schemas
+│       ├── services/       # 业务逻辑
+│       └── core/          # 核心配置
+├── docker compose.yml  # Docker编排
+├── .env.example      # 环境变量模板
+└── AGENTS.md        # 开发者指南
 ```
 
 ## 核心功能
 
-### 1. 数据管理
-- 订单管理：创建、编辑、删除订单
-- 物料管理：物料库存、供应商信息
-- BOM管理：产品物料清单
-- 资源管理：生产设备、人员、工具
-- 日历管理：工作日历、班次设置
+### 1. 菜单导航
+- 左侧垂直菜单栏
+- 会话：AI对话历史记录
+- 数据管理：工艺路线、物料管理、BOM管理、资源管理、工作日历
+- 生产计划：待排订单、订单计划、物料计划、资源计划
+- 集成中心：入站配置、出站配置、请求日志
 
-### 2. 排产配置
+### 2. 数据管理
+- 工艺路线管理：支持模板下载、导入
+- 物料管理：支持模板下载、导入
+- BOM管理：支持模板下载、导入
+- 资源管理：支持模板下载、导入
+- 工作日历：班次设置
+
+### 3. 生产计划
+- 待排订单：选择订单进行排产
+- 订单计划：甘特图展示
+- 物料计划：甘特图展示
+- 资源计划：甘特图展示
+
+### 4. 排产配置
 - 优化目标选择：最小化完工时间、最大化准时率等
 - 约束条件设置：资源容量、物料可用性、工序顺序
 - 配置模板：保存和加载常用配置
 
-### 3. 排产执行
+### 5. 排产执行
 - 异步排产任务
 - 实时进度跟踪
 - 结果保存和历史记录
 
-### 4. 结果展示
-- 甘特图可视化
-- 资源利用率分析
-- 准时率统计
-- 瓶颈识别
+### 6. 用户中心
+- 用户信息
+- 个人设置
+- AI模型配置（支持OpenAI、Anthropic、Custom API）
 
-### 5. AI对话
+### 7. AI对话
 - 自然语言排产："帮我排一下本周的订单"
 - 结果查询："为什么订单A123排在明天？"
 - 数据分析："资源利用率最高的是哪个设备？"
@@ -152,12 +181,13 @@ ai-aps/
 3. 创建数据库迁移: `alembic revision --autogenerate -m "描述"`
 4. 应用迁移: `alembic upgrade head`
 5. 在 `backend/app/api/v1/` 创建API路由
+6. 注册路由到 `backend/app/main.py`
 
 ### 添加新的前端页面
 
 1. 在 `frontend/src/pages/` 创建页面组件
 2. 在 `frontend/src/App.tsx` 添加路由
-3. 如需状态管理，在 `frontend/src/stores/` 创建store
+3. 如需状态管理，在 `frontend/src/stores/` 创建Zustand store
 
 ## 测试
 
@@ -173,6 +203,12 @@ cd frontend
 npm run test
 ```
 
+### 前端构建检查
+```bash
+cd frontend
+npm run build
+```
+
 ## 部署
 
 ### 生产环境部署
@@ -180,7 +216,7 @@ npm run test
 1. 修改 `.env` 文件中的生产配置
 2. 构建并启动:
 ```bash
-docker compose -f docker compose.yml -f docker compose.prod.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
 
 ## 许可证
