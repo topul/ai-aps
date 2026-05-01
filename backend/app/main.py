@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.v1 import orders, materials, bom, resources, calendar, scheduling, chat, products, import_export, auth, websocket, ai_config
+from app.api.v1 import orders, materials, bom, resources, calendar, scheduling, chat, products, import_export, auth, websocket, ai_config, session, integration
 
 app = FastAPI(
     title="AI-APS API",
@@ -36,6 +36,7 @@ app.include_router(scheduling.router, prefix="/api/v1/scheduling", tags=["schedu
 app.include_router(chat.router, prefix="/api/v1/chat", tags=["chat"])
 app.include_router(import_export.router, prefix="/api/v1/import-export", tags=["import-export"])
 app.include_router(websocket.router, prefix="/api/v1", tags=["websocket"])
+app.include_router(session.router, prefix="/api/v1/sessions", tags=["sessions"])
 
 
 @app.get("/")
