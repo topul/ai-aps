@@ -123,6 +123,31 @@ def get_conversation(
     return conversation
 
 
+@router.put("/{conversation_id}", response_model=ConversationResponse)
+def update_conversation(
+    conversation_id: int,
+    conversation: ConversationCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """更新会话标题"""
+    db_conversation = db.query(Conversation).filter(
+        Conversation.id == conversation_id,
+        Conversation.user_id == current_user.id
+    ).first()
+    
+    if not db_conversation:
+        raise HTTPException(status_code=404, detail="会话不存在")
+    
+    if conversation.title:
+        db_conversation.title = conversation.title
+    db_conversation.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(db_conversation)
+    
+    return db_conversation
+
+
 @router.delete("/{conversation_id}")
 def delete_conversation(
     conversation_id: int,

@@ -1,16 +1,26 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send } from 'lucide-react';
+import { Send, Loader2 } from 'lucide-react';
 import { api } from '../../services/api';
 import type { Message } from '../../types/session';
 
 interface SessionDetailProps {
   sessionId: number;
+  onTitleChange?: (title: string) => void;
 }
 
 function formatMessageContent(content: string) {
   return content.split('\n').map((line, i) => (
     <p key={i} className="mb-1">{line || '\u00A0'}</p>
   ));
+}
+
+function formatTime(isoString: string) {
+  try {
+    const date = new Date(isoString + 'Z');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  } catch { return '--:--'; }
 }
 
 export default function SessionDetail({ sessionId }: SessionDetailProps) {
@@ -121,11 +131,21 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
                   {formatMessageContent(msg.content)}
                 </div>
                 <p className="text-xs opacity-60 mt-2">
-                  {new Date(msg.created_at).toLocaleTimeString('zh-CN')}
+                  {formatTime(msg.created_at)}
                 </p>
               </div>
             </div>
           ))
+        )}
+        {sending && (
+          <div className="flex justify-start">
+            <div className="max-w-[80%] p-4 rounded-lg bg-dark-card border border-tech-blue/20">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">AI 正在思考...</span>
+              </div>
+            </div>
+          </div>
         )}
         <div ref={messagesEndRef} />
       </div>

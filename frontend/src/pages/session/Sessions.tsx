@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, MessageSquare, Search } from 'lucide-react';
+import { Plus, Trash2, MessageSquare, Search, Edit2, Check, X } from 'lucide-react';
 import { api } from '../../services/api';
 import type { Session } from '../../types/session';
 import SessionDetail from './SessionDetail';
@@ -9,6 +9,8 @@ export default function Sessions() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editTitle, setEditTitle] = useState('');
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
 
@@ -53,6 +55,27 @@ export default function Sessions() {
     } catch (error) {
       console.error('删除会话失败:', error);
     }
+  };
+
+  const startEditTitle = (session: Session, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEditingId(session.id);
+    setEditTitle(session.title || '新会话');
+  };
+
+  const saveTitle = async (sessionId: number) => {
+    if (!editTitle.trim()) {
+      setEditingId(null);
+      return;
+    }
+    try {
+      const response = await api.put(`/api/v1/sessions/${sessionId}`, { title: editTitle.trim() });
+      setSessions(sessions.map(s => s.id === sessionId ? { ...s, title: response.data.title } : s));
+    } catch (error) {
+      console.error('保存标题失败:', error);
+    }
+    setEditingId(null);
   };
 
   const filteredSessions = sessions.filter(s => 
@@ -108,13 +131,40 @@ export default function Sessions() {
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="font-medium text-white text-sm truncate flex-1">{session.title || '新会话'}</h3>
-                  <button
-                    onClick={(e) => deleteSession(session.id, e)}
-                    className="p-1 rounded opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {editingId === session.id ? (
+                    <div className="flex items-center gap-1 flex-1" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && saveTitle(session.id)}
+                        className="flex-1 px-1 py-0.5 text-sm bg-dark-bg border border-tech-blue/30 rounded text-white"
+                        autoFocus
+                      />
+                      <button onClick={() => saveTitle(session.id)} className="p-1 text-green-400">
+                        <Check className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => setEditingId(null)} className="p-1 text-red-400">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <h3 className="font-medium text-white text-sm truncate flex-1">{session.title || '新会话'}</h3>
+                      <button
+                        onClick={(e) => startEditTitle(session, e)}
+                        className="p-1 rounded opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-white transition-all"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => deleteSession(session.id, e)}
+                        className="p-1 rounded opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {new Date(session.updated_at).toLocaleString('zh-CN')}
