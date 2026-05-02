@@ -116,10 +116,15 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
               const content = data.slice(12);
               reasoningContent += content;
               setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, reasoning_content: (m.reasoning_content || '') + content } : m));
+              // 深度思考开始时自动展开
+              setExpandedReasoning(prev => { const next = new Set(prev); next.add(assistantId); return next; });
               continue;
             }
             
             if (data.startsWith('[REASONING')) continue;
+            
+            // 开始输出正式内容时自动折叠深度思考
+            setExpandedReasoning(prev => { const next = new Set(prev); next.delete(assistantId); return next; });
             
             assistantContent += data;
             setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: assistantContent } : m));
