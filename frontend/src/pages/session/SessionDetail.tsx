@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, ReactNode } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Send, Loader2, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import { api } from '../../services/api';
 import type { Message } from '../../types/session';
@@ -36,7 +36,6 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
   const [sending, setSending] = useState(false);
   const [expandedReasoning, setExpandedReasoning] = useState<Set<number>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [newAssistantId, setNewAssistantId] = useState<number | null>(null);
 
   useEffect(() => {
     if (sessionId) fetchSession(sessionId);
@@ -61,7 +60,7 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-const sendMessage = async (e: React.FormEvent) => {
+  const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || sending || !sessionId) return;
 
@@ -69,7 +68,7 @@ const sendMessage = async (e: React.FormEvent) => {
     setInput('');
     setSending(true);
 
-    const tempMessage: Message = {
+    const tempMessage: MessageWithReasoning = {
       id: Date.now(),
       conversation_id: sessionId,
       role: 'user',
@@ -90,7 +89,6 @@ const sendMessage = async (e: React.FormEvent) => {
       setMessages(prev => prev.map(m => m.id === tempMessage.id ? { ...m, id: userResp.data.id } : m));
 
       setMessages(prev => [...prev, { id: assistantId, conversation_id: sessionId, role: 'assistant', content: '', created_at: new Date().toISOString() }]);
-      setNewAssistantId(assistantId);
 
       const response = await fetch('http://localhost:8000/api/v1/chat/message/stream', {
         method: 'POST',
@@ -154,19 +152,10 @@ const sendMessage = async (e: React.FormEvent) => {
           <div className="flex items-center justify-center h-full text-muted-foreground">
             <p>开始发送消息进行对话</p>
           </div>
-) : (
+        ) : (
           messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[80%] p-4 rounded-lg ${
-                  msg.role === 'user'
-                    ? 'bg-gradient-tech text-white'
-                    : 'bg-dark-card border border-tech-blue/20'
-                }`}
-              >
+            <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] p-4 rounded-lg ${msg.role === 'user' ? 'bg-gradient-tech text-white' : 'bg-dark-card border border-tech-blue/20'}`}>
                 {msg.reasoning_content && !msg.content && (
                   <div className="flex items-center gap-2 text-muted-foreground mb-2">
                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -175,75 +164,33 @@ const sendMessage = async (e: React.FormEvent) => {
                 )}
                 {msg.reasoning_content && msg.content && expandedReasoning.has(msg.id) && (
                   <div className="mb-3 p-3 rounded-lg bg-black/20 border border-gray-700">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setExpandedReasoning(prev => {
-                          const next = new Set(prev);
-                          if (next.has(msg.id)) next.delete(msg.id);
-                          else next.add(msg.id);
-                          return next;
-                        });
-                      }}
-                      className="flex items-center gap-2 w-full text-gray-400 text-xs hover:text-gray-300"
-                    >
+                    <button type="button" onClick={() => setExpandedReasoning(prev => { const next = new Set(prev); next.has(msg.id) ? next.delete(msg.id) : next.add(msg.id); return next; })} className="flex items-center gap-2 w-full text-gray-400 text-xs hover:text-gray-300">
                       <Sparkles className="w-3 h-3" />
                       <span>深度思考</span>
-                      {expandedReasoning.has(msg.id) ? (
-                        <ChevronUp className="w-3 h-3 ml-auto" />
-                      ) : (
-                        <ChevronDown className="w-3 h-3 ml-auto" />
-                      )}
+                      {expandedReasoning.has(msg.id) ? <ChevronUp className="w-3 h-3 ml-auto" /> : <ChevronDown className="w-3 h-3 ml-auto" />}
                     </button>
-                    {expandedReasoning.has(msg.id) && (
-                      <div className="mt-2 text-sm text-gray-300 whitespace-pre-wrap">
-                        {msg.reasoning_content}
-                      </div>
-                    )}
+                    {expandedReasoning.has(msg.id) && <div className="mt-2 text-sm text-gray-300 whitespace-pre-wrap">{msg.reasoning_content}</div>}
                   </div>
                 )}
                 {msg.reasoning_content && msg.content && !expandedReasoning.has(msg.id) && (
-                  <button
-                    type="button"
-                    onClick={() => setExpandedReasoning(prev => new Set(prev).add(msg.id))}
-                    className="flex items-center gap-2 mb-2 text-xs text-gray-500 hover:text-gray-400"
-                  >
+                  <button type="button" onClick={() => setExpandedReasoning(prev => new Set(prev).add(msg.id))} className="flex items-center gap-2 mb-2 text-xs text-gray-500 hover:text-gray-400">
                     <Sparkles className="w-3 h-3" />
                     <span>查看深度思考</span>
                     <ChevronDown className="w-3 h-3" />
                   </button>
                 )}
-                <div className="text-sm">
-                  {formatMessageContent(msg.content)}
-                </div>
-                {msg.content && !sending && (
-                  <p className="text-xs opacity-60 mt-2">
-                    {formatTime(msg.created_at)}
-                  </p>
-                  )}
-                </div>
-              )}
+                <div className="text-sm">{formatMessageContent(msg.content)}</div>
+                {msg.content && !sending && <p className="text-xs opacity-60 mt-2">{formatTime(msg.created_at)}</p>}
+              </div>
             </div>
           ))
         )}
         <div ref={messagesEndRef} />
       </div>
-
       <form onSubmit={sendMessage} className="p-4 border-t border-tech-blue/20">
         <div className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="输入消息..."
-            className="flex-1 px-4 py-3 rounded-lg bg-dark-bg border border-tech-blue/20 text-white focus:outline-none focus:border-tech-blue/50"
-            disabled={sending}
-          />
-          <button
-            type="submit"
-            disabled={sending || !input.trim()}
-            className="px-4 py-2 rounded-lg bg-gradient-tech text-white hover:opacity-90 disabled:opacity-50"
-          >
+          <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="输入消息..." className="flex-1 px-4 py-3 rounded-lg bg-dark-bg border border-tech-blue/20 text-white focus:outline-none focus:border-tech-blue/50" disabled={sending} />
+          <button type="submit" disabled={sending || !input.trim()} className="px-4 py-2 rounded-lg bg-gradient-tech text-white hover:opacity-90 disabled:opacity-50">
             <Send className="w-5 h-5" />
           </button>
         </div>
