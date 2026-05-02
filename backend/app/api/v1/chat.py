@@ -117,7 +117,7 @@ async def send_message_stream(
         async def generate():
             try:
                 full_response = ""
-                async for chunk in agent.process_message_non_stream(chat_message.message, chat_message.context):
+                async for chunk in await agent.process_message_non_stream(chat_message.message, chat_message.context):
                     full_response += chunk
                     yield f"data: {chunk}\n\n"
                 yield "data: [DONE]\n\n"
