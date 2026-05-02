@@ -164,9 +164,12 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
             <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] p-4 rounded-lg ${msg.role === 'user' ? 'bg-gradient-tech text-white' : 'bg-dark-card border border-tech-blue/20'}`}>
                 {msg.reasoning_content && !msg.content && (
-                  <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    <span className="text-xs">深度思考中...</span>
+                  <div className="mb-3 p-3 rounded-lg bg-black/20 border border-gray-700">
+                    <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span className="text-xs">深度思考中...</span>
+                    </div>
+                    <div className="text-sm text-gray-300 whitespace-pre-wrap">{msg.reasoning_content}</div>
                   </div>
                 )}
                 {msg.reasoning_content && msg.content && expandedReasoning.has(msg.id) && (
