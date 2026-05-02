@@ -130,6 +130,7 @@ const sendMessage = async (e: React.FormEvent) => {
         await api.post(`/api/v1/sessions/${sessionId}/messages`, {
           role: 'assistant',
           content: assistantContent || '已收到您的消息',
+          reasoning_content: reasoningContent || undefined,
         });
       }
     } catch (error: any) {

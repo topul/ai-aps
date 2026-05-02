@@ -40,6 +40,7 @@ def get_current_active_user(current_user: User = Depends(get_current_user)) -> U
 class MessageCreate(BaseModel):
     role: str
     content: str
+    reasoning_content: Optional[str] = None
 
 
 class MessageResponse(BaseModel):
@@ -47,6 +48,7 @@ class MessageResponse(BaseModel):
     conversation_id: int
     role: str
     content: str
+    reasoning_content: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -189,7 +191,8 @@ def create_message(
     db_message = Message(
         conversation_id=conversation_id,
         role=message.role,
-        content=message.content
+        content=message.content,
+        reasoning_content=message.reasoning_content
     )
     db.add(db_message)
     
