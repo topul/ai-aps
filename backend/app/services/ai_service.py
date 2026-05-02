@@ -96,6 +96,148 @@ class ClaudeService(AIService):
             yield {"type": "content", "content": f"[错误] {str(e)}"}
 
 
+class OpenAIService(AIService):
+    """OpenAI API服务"""
+
+    def __init__(self, config: AIConfig):
+        super().__init__(config)
+        self.api_base = config.api_base or "https://api.openai.com/v1"
+
+    async def chat(self, messages: list[dict], stream: bool = True) -> AsyncIterator[dict]:
+        """调用OpenAI API"""
+        url = f"{self.api_base}/chat/completions"
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "max_tokens": self.parameters.get("max_tokens", 4096),
+            "temperature": self.parameters.get("temperature", 0.7),
+            "stream": stream,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                if stream:
+                    async with client.stream("POST", url, headers=headers, json=payload) as response:
+                        response.raise_for_status()
+
+                        async for line in response.aiter_lines():
+                            if line.startswith("data: "):
+                                data = line[6:]
+                                if data == "[DONE]":
+                                    break
+
+                                try:
+                                    event = json.loads(data)
+                                    choices = event.get("choices", [])
+                                    if choices:
+                                        delta = choices[0].get("delta", {})
+                                        reasoning = delta.get("reasoning_content")
+                                        content = delta.get("content")
+                                        if reasoning:
+                                            yield {"type": "reasoning", "content": reasoning}
+                                        if content:
+                                            yield {"type": "content", "content": content}
+                                except json.JSONDecodeError:
+                                    continue
+                else:
+                    response = await client.post(url, headers=headers, json=payload)
+                    response.raise_for_status()
+                    result = response.json()
+                    choices = result.get("choices", [])
+                    if choices:
+                        message = choices[0].get("message", {})
+                        reasoning = message.get("reasoning_content")
+                        content = message.get("content", "")
+                        if reasoning:
+                            yield {"type": "reasoning", "content": reasoning}
+                        if content:
+                            yield {"type": "content", "content": content}
+
+        except httpx.HTTPError as e:
+            logger.error(f"OpenAI API错误: {e}")
+            yield {"type": "content", "content": f"[错误] OpenAI API调用失败: {str(e)}"}
+        except Exception as e:
+            logger.error(f"未知错误: {e}")
+            yield {"type": "content", "content": f"[错误] {str(e)}"}
+
+
+class CustomAPIService(AIService):
+    """自定义API服务（兼容OpenAI格式）"""
+
+    async def chat(self, messages: list[dict], stream: bool = True) -> AsyncIterator[dict]:
+        """调用自定义API"""
+        if not self.api_base:
+            yield {"type": "content", "content": "[错误] 自定义API需要配置api_base"}
+            return
+
+        url = f"{self.api_base}/chat/completions"
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "max_tokens": self.parameters.get("max_tokens", 4096),
+            "temperature": self.parameters.get("temperature", 0.7),
+            "stream": stream,
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                if stream:
+                    async with client.stream("POST", url, headers=headers, json=payload) as response:
+                        response.raise_for_status()
+
+                        async for line in response.aiter_lines():
+                            if line.startswith("data: "):
+                                data = line[6:]
+                                if data == "[DONE]":
+                                    break
+
+                                try:
+                                    event = json.loads(data)
+                                    choices = event.get("choices", [])
+                                    if choices:
+                                        delta = choices[0].get("delta", {})
+                                        reasoning = delta.get("reasoning_content")
+                                        content = delta.get("content")
+                                        if reasoning:
+                                            yield {"type": "reasoning", "content": reasoning}
+                                        if content:
+                                            yield {"type": "content", "content": content}
+                                except json.JSONDecodeError:
+                                    continue
+                else:
+                    response = await client.post(url, headers=headers, json=payload)
+                    response.raise_for_status()
+                    result = response.json()
+                    choices = result.get("choices", [])
+                    if choices:
+                        message = choices[0].get("message", {})
+                        reasoning = message.get("reasoning_content")
+                        content = message.get("content", "")
+                        if reasoning:
+                            yield {"type": "reasoning", "content": reasoning}
+                        if content:
+                            yield {"type": "content", "content": content}
+
+        except httpx.HTTPError as e:
+            logger.error(f"自定义API错误: {e}")
+            yield {"type": "content", "content": f"[错误] 自定义API调用失败: {str(e)}"}
+        except Exception as e:
+            logger.error(f"未知错误: {e}")
+            yield {"type": "content", "content": f"[错误] {str(e)}"}
+
+
 class AIServiceFactory:
     """AI服务工厂"""
 
