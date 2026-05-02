@@ -126,8 +126,16 @@ class OpenAIService(AIService):
                     async with client.stream("POST", url, headers=headers, json=payload) as response:
                         response.raise_for_status()
 
-                        async for line in response.aiter_lines():
-                            if line.startswith("data: "):
+                        buffer = ""
+                        async for chunk in response.aiter_text():
+                            buffer += chunk
+                            # 处理 SSE 格式的多行文本
+                            while "\n" in buffer:
+                                line, buffer = buffer.split("\n", 1)
+                                line = line.strip()
+                                if not line.startswith("data: "):
+                                    continue
+                                
                                 data = line[6:]
                                 if data == "[DONE]":
                                     break
@@ -197,8 +205,16 @@ class CustomAPIService(AIService):
                     async with client.stream("POST", url, headers=headers, json=payload) as response:
                         response.raise_for_status()
 
-                        async for line in response.aiter_lines():
-                            if line.startswith("data: "):
+                        buffer = ""
+                        async for chunk in response.aiter_text():
+                            buffer += chunk
+                            # 处理 SSE 格式的多行文本
+                            while "\n" in buffer:
+                                line, buffer = buffer.split("\n", 1)
+                                line = line.strip()
+                                if not line.startswith("data: "):
+                                    continue
+                                
                                 data = line[6:]
                                 if data == "[DONE]":
                                     break
