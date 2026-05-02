@@ -17,6 +17,18 @@ function formatMessageContent(content: string) {
   return <ReactMarkdown>{content}</ReactMarkdown>;
 }
 
+function formatTime(isoString: string) {
+  try {
+    let date = new Date(isoString);
+    if (isNaN(date.getTime())) {
+      date = new Date(isoString + '+00:00');
+    }
+    const hours = String(date.getUTCHours()).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  } catch { return '--:--'; }
+}
+
 export default function SessionDetail({ sessionId }: SessionDetailProps) {
   const [messages, setMessages] = useState<MessageWithReasoning[]>([]);
   const [input, setInput] = useState('');
