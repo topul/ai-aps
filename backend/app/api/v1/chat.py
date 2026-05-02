@@ -102,7 +102,7 @@ def send_message_sync(
 
     except Exception as e:
         logger.error(f"处理消息失败: {str(e)}")
-        return {"response": f"抱歉，处理您的请求时出现错误: {str(e)}"
+        return {"response": f"抱歉，处理您的请求时出现错误: {str(e)}"}
 
 
 @router.post("/message/stream")
