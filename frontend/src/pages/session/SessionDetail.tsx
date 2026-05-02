@@ -102,8 +102,7 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
 
-if (reader) {
-        let reasoningContent = '';
+      if (reader) {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -117,23 +116,10 @@ if (reader) {
               const content = data.slice(12);
               reasoningContent += content;
               setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, reasoning_content: (m.reasoning_content || '') + content } : m));
-              continue;  // Skip adding to assistantContent
+              continue;
             }
             
-            // Skip incomplete [REASONING tags
             if (data.startsWith('[REASONING')) continue;
-            
-            assistantContent += data;
-            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: assistantContent } : m));
-          }
-        }
-
-        await api.post(`/api/v1/sessions/${sessionId}/messages`, {
-          role: 'assistant',
-          content: assistantContent || '已收到您的消息',
-          reasoning_content: reasoningContent || undefined,
-        });
-      }
             
             assistantContent += data;
             setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: assistantContent } : m));
