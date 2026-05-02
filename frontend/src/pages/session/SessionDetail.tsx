@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, ReactNode } from 'react';
-import { Send, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Send, Loader2, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import { api } from '../../services/api';
 import type { Message } from '../../types/session';
 import ReactMarkdown from 'react-markdown';
@@ -17,23 +17,12 @@ function formatMessageContent(content: string) {
   return <ReactMarkdown>{content}</ReactMarkdown>;
 }
 
-function formatTime(isoString: string) {
-  try {
-    let date = new Date(isoString);
-    if (isNaN(date.getTime())) {
-      date = new Date(isoString + '+00:00');
-    }
-    const hours = String(date.getUTCHours()).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-    return `${hours}:${minutes}`;
-  } catch { return '--:--'; }
-}
-
 export default function SessionDetail({ sessionId }: SessionDetailProps) {
   const [messages, setMessages] = useState<MessageWithReasoning[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [expandedReasoning, setExpandedReasoning] = useState<Set<number>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -169,16 +158,51 @@ const sendMessage = async (e: React.FormEvent) => {
                       : 'bg-dark-card border border-tech-blue/20'
                   }`}
                 >
-                  {msg.reasoning_content && (
+                  {msg.reasoning_content && msg.content && expandedReasoning.has(msg.id) && (
                     <div className="mb-3 p-3 rounded-lg bg-black/20 border border-gray-700">
-                      <div className="flex items-center gap-2 mb-2 text-gray-400 text-xs">
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                        <span>深度思考中...</span>
-                      </div>
-                      <div className="text-sm text-gray-300 whitespace-pre-wrap">
-                        {msg.reasoning_content}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setExpandedReasoning(prev => {
+                            const next = new Set(prev);
+                            if (next.has(msg.id)) next.delete(msg.id);
+                            else next.add(msg.id);
+                            return next;
+                          });
+                        }}
+                        className="flex items-center gap-2 w-full text-gray-400 text-xs hover:text-gray-300"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        <span>深度思考</span>
+                        {expandedReasoning.has(msg.id) ? (
+                          <ChevronUp className="w-3 h-3 ml-auto" />
+                        ) : (
+                          <ChevronDown className="w-3 h-3 ml-auto" />
+                        )}
+                      </button>
+                      {expandedReasoning.has(msg.id) && (
+                        <div className="mt-2 text-sm text-gray-300 whitespace-pre-wrap">
+                          {msg.reasoning_content}
+                        </div>
+                      )}
                     </div>
+                  )}
+                  {msg.reasoning_content && !msg.content && (
+                    <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      <span className="text-xs">深度思考中...</span>
+                    </div>
+                  )}
+                  {msg.reasoning_content && msg.content && !expandedReasoning.has(msg.id) && (
+                    <button
+                      type="button"
+                      onClick={() => setExpandedReasoning(prev => new Set(prev).add(msg.id))}
+                      className="flex items-center gap-2 mb-2 text-xs text-gray-500 hover:text-gray-400"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      <span>查看深度思考</span>
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
                   )}
                   <div className="text-sm">
                     {formatMessageContent(msg.content)}
