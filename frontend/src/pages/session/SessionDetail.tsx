@@ -154,80 +154,72 @@ const sendMessage = async (e: React.FormEvent) => {
           <div className="flex items-center justify-center h-full text-muted-foreground">
             <p>开始发送消息进行对话</p>
           </div>
-        ) : (
+) : (
           messages.map((msg) => (
             <div
               key={msg.id}
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              {(msg.role === 'assistant' && !msg.content) ? (
-                <div className="max-w-[80%] p-4 rounded-lg bg-dark-card border border-tech-blue/20">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">AI 正在思考...</span>
+              <div
+                className={`max-w-[80%] p-4 rounded-lg ${
+                  msg.role === 'user'
+                    ? 'bg-gradient-tech text-white'
+                    : 'bg-dark-card border border-tech-blue/20'
+                }`}
+              >
+                {msg.reasoning_content && !msg.content && (
+                  <div className="flex items-center gap-2 text-muted-foreground mb-2">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <span className="text-xs">深度思考中...</span>
                   </div>
-                </div>
-              ) : (
-                <div
-                  className={`max-w-[80%] p-4 rounded-lg ${
-                    msg.role === 'user'
-                      ? 'bg-gradient-tech text-white'
-                      : 'bg-dark-card border border-tech-blue/20'
-                  }`}
-                >
-                  {msg.reasoning_content && msg.content && expandedReasoning.has(msg.id) && (
-                    <div className="mb-3 p-3 rounded-lg bg-black/20 border border-gray-700">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setExpandedReasoning(prev => {
-                            const next = new Set(prev);
-                            if (next.has(msg.id)) next.delete(msg.id);
-                            else next.add(msg.id);
-                            return next;
-                          });
-                        }}
-                        className="flex items-center gap-2 w-full text-gray-400 text-xs hover:text-gray-300"
-                      >
-                        <Sparkles className="w-3 h-3" />
-                        <span>深度思考</span>
-                        {expandedReasoning.has(msg.id) ? (
-                          <ChevronUp className="w-3 h-3 ml-auto" />
-                        ) : (
-                          <ChevronDown className="w-3 h-3 ml-auto" />
-                        )}
-                      </button>
-                      {expandedReasoning.has(msg.id) && (
-                        <div className="mt-2 text-sm text-gray-300 whitespace-pre-wrap">
-                          {msg.reasoning_content}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {msg.reasoning_content && !msg.content && (
-                    <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      <span className="text-xs">深度思考中...</span>
-                    </div>
-                  )}
-                  {msg.reasoning_content && msg.content && !expandedReasoning.has(msg.id) && (
+                )}
+                {msg.reasoning_content && msg.content && expandedReasoning.has(msg.id) && (
+                  <div className="mb-3 p-3 rounded-lg bg-black/20 border border-gray-700">
                     <button
                       type="button"
-                      onClick={() => setExpandedReasoning(prev => new Set(prev).add(msg.id))}
-                      className="flex items-center gap-2 mb-2 text-xs text-gray-500 hover:text-gray-400"
+                      onClick={() => {
+                        setExpandedReasoning(prev => {
+                          const next = new Set(prev);
+                          if (next.has(msg.id)) next.delete(msg.id);
+                          else next.add(msg.id);
+                          return next;
+                        });
+                      }}
+                      className="flex items-center gap-2 w-full text-gray-400 text-xs hover:text-gray-300"
                     >
                       <Sparkles className="w-3 h-3" />
-                      <span>查看深度思考</span>
-                      <ChevronDown className="w-3 h-3" />
+                      <span>深度思考</span>
+                      {expandedReasoning.has(msg.id) ? (
+                        <ChevronUp className="w-3 h-3 ml-auto" />
+                      ) : (
+                        <ChevronDown className="w-3 h-3 ml-auto" />
+                      )}
                     </button>
-                  )}
-                  <div className="text-sm">
-                    {formatMessageContent(msg.content)}
+                    {expandedReasoning.has(msg.id) && (
+                      <div className="mt-2 text-sm text-gray-300 whitespace-pre-wrap">
+                        {msg.reasoning_content}
+                      </div>
+                    )}
                   </div>
-                  {msg.content && !sending && (
-                    <p className="text-xs opacity-60 mt-2">
-                      {formatTime(msg.created_at)}
-                    </p>
+                )}
+                {msg.reasoning_content && msg.content && !expandedReasoning.has(msg.id) && (
+                  <button
+                    type="button"
+                    onClick={() => setExpandedReasoning(prev => new Set(prev).add(msg.id))}
+                    className="flex items-center gap-2 mb-2 text-xs text-gray-500 hover:text-gray-400"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>查看深度思考</span>
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                )}
+                <div className="text-sm">
+                  {formatMessageContent(msg.content)}
+                </div>
+                {msg.content && !sending && (
+                  <p className="text-xs opacity-60 mt-2">
+                    {formatTime(msg.created_at)}
+                  </p>
                   )}
                 </div>
               )}
