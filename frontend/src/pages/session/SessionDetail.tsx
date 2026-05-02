@@ -66,18 +66,26 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
         content: userMessage,
       });
 
-      const response = await api.post('/api/v1/chat/message', {
+      const response = await api.post('/api/v1/chat/message/sync', {
         message: userMessage,
         context: { conversation_id: sessionId },
       });
 
+      const replyContent = response.data.response || '已收到您的消息';
+      
       const botResponse = await api.post(`/api/v1/sessions/${sessionId}/messages`, {
         role: 'assistant',
-        content: response.data.message || response.data.content || '已收到您的消息',
+        content: replyContent,
       });
       setMessages(prev => [...prev, botResponse.data]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('发送消息失败:', error);
+      const errorMsg = error.response?.data?.response || error.message || '发送失败';
+      const botResponse = await api.post(`/api/v1/sessions/${sessionId}/messages`, {
+        role: 'assistant',
+        content: errorMsg,
+      });
+      setMessages(prev => [...prev, botResponse.data]);
     } finally {
       setSending(false);
     }
