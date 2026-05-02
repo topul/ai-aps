@@ -164,6 +164,53 @@ def set_default_config(config_id: int, db: Session = Depends(get_db)):
     return {"message": f"已将 {db_config.name} 设置为默认配置"}
 
 
+class AIConfigTestRequest(BaseModel):
+    provider: str
+    api_key: str
+    api_base: Optional[str] = None
+    model: str
+    parameters: Optional[dict] = {}
+
+
+@router.post("/test-connection")
+async def test_ai_config_connection(config: AIConfigTestRequest, db: Session = Depends(get_db)):
+    """测试AI配置（无需保存，可直接测试）"""
+    from app.services.ai_service import get_ai_response
+
+    if config.provider not in ["claude", "openai", "custom"]:
+        raise HTTPException(status_code=400, detail="不支持的AI提供商")
+
+    # 创建临时配置对象
+    test_config = AIConfig(
+        name="test",
+        provider=config.provider,
+        api_key=config.api_key,
+        api_base=config.api_base,
+        model=config.model,
+        parameters=config.parameters or {},
+        is_active=True,
+        is_default=False,
+    )
+
+    test_messages = [{"role": "user", "content": "你好，请回复'测试成功'"}]
+
+    try:
+        response_text = ""
+        async for chunk in get_ai_response(test_config, test_messages, stream=False):
+            response_text += chunk
+
+        return {
+            "status": "success",
+            "message": "连接测试成功",
+            "response": response_text
+        }
+    except Exception as e:
+        return {
+            "status": "failed",
+            "message": f"连接测试失败: {str(e)}"
+        }
+
+
 @router.post("/{config_id}/test")
 async def test_ai_config(config_id: int, db: Session = Depends(get_db)):
     """测试AI配置"""

@@ -10,7 +10,7 @@ export default function AIModelConfig() {
   const [formData, setFormData] = useState({
     provider: 'openai',
     api_key: '',
-    api_base_url: '',
+    api_base: '',
     model: 'gpt-3.5-turbo',
     temperature: 0.7,
     max_tokens: 2000,
@@ -29,10 +29,10 @@ export default function AIModelConfig() {
           setFormData({
             provider: defaultConfig.provider,
             api_key: defaultConfig.api_key || '',
-            api_base_url: defaultConfig.api_base_url || '',
+            api_base: (defaultConfig as any).api_base_url || '',
             model: defaultConfig.model,
-            temperature: defaultConfig.temperature || 0.7,
-            max_tokens: defaultConfig.max_tokens || 2000,
+            temperature: (defaultConfig as any).temperature || 0.7,
+            max_tokens: (defaultConfig as any).max_tokens || 2000,
             is_default: true,
           });
         }
@@ -45,8 +45,21 @@ export default function AIModelConfig() {
     setTesting(true);
     setTestResult(null);
     try {
-      await api.post('/api/v1/ai-config/test', formData);
-      setTestResult({ success: true, message: '连接成功' });
+      const response = await api.post('/api/v1/ai-config/test-connection', {
+        provider: formData.provider,
+        api_key: formData.api_key,
+        api_base: formData.provider === 'custom' ? formData.api_base : null,
+        model: formData.model,
+        parameters: {
+          temperature: formData.temperature,
+          max_tokens: formData.max_tokens,
+        },
+      });
+      if (response.data.status === 'success') {
+        setTestResult({ success: true, message: response.data.message || '连接成功' });
+      } else {
+        setTestResult({ success: false, message: response.data.message || '连接失败' });
+      }
     } catch (error: any) {
       setTestResult({ success: false, message: error.response?.data?.detail || '连接失败' });
     } finally {
@@ -56,10 +69,24 @@ export default function AIModelConfig() {
 
   const handleSave = async () => {
     try {
-      await api.post('/api/v1/ai-config', formData);
+      await api.post('/api/v1/ai-config', {
+        name: `${formData.provider}_${formData.model}`,
+        provider: formData.provider,
+        api_key: formData.api_key,
+        api_base: formData.provider === 'custom' ? formData.api_base : null,
+        model: formData.model,
+        parameters: {
+          temperature: formData.temperature,
+          max_tokens: formData.max_tokens,
+        },
+        is_active: true,
+        is_default: formData.is_default,
+      });
       alert('保存成功');
       fetchConfigs();
-    } catch { alert('保存失败'); }
+    } catch (error: any) {
+      alert('保存失败: ' + (error.response?.data?.detail || ''));
+    }
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-tech-blue border-t-transparent rounded-full animate-spin" /></div>;
