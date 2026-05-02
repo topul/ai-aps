@@ -36,6 +36,7 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
   const [sending, setSending] = useState(false);
   const [expandedReasoning, setExpandedReasoning] = useState<Set<number>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [newAssistantId, setNewAssistantId] = useState<number | null>(null);
 
   useEffect(() => {
     if (sessionId) fetchSession(sessionId);
@@ -88,6 +89,7 @@ const sendMessage = async (e: React.FormEvent) => {
       setMessages(prev => prev.map(m => m.id === tempMessage.id ? { ...m, id: userResp.data.id } : m));
 
       setMessages(prev => [...prev, { id: assistantId, conversation_id: sessionId, role: 'assistant', content: '', created_at: new Date().toISOString() }]);
+      setNewAssistantId(assistantId);
 
       const response = await fetch('http://localhost:8000/api/v1/chat/message/stream', {
         method: 'POST',
@@ -102,6 +104,7 @@ const sendMessage = async (e: React.FormEvent) => {
       const decoder = new TextDecoder();
 
       if (reader) {
+        let reasoningContent = '';
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -111,10 +114,12 @@ const sendMessage = async (e: React.FormEvent) => {
             const data = match[1].trim();
             if (data === '[DONE]') break;
             
-            const reasoningMatch = data.match(/^\[REASONING\]\s*(.+)/);
-            if (reasoningMatch) {
-              assistantContent = reasoningMatch[1];
-              setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, reasoning_content: (m.reasoning_content || '') + assistantContent } : m));
+            if (data.startsWith('[REASONING]')) {
+              const content = data.slice(12);
+              reasoningContent += content;
+              setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, reasoning_content: (m.reasoning_content || '') + content } : m));
+            } else if (data.startsWith('[REASONING')) {
+              continue;
             } else {
               assistantContent += data;
               setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: assistantContent } : m));
