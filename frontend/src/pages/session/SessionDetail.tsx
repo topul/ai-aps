@@ -80,6 +80,7 @@ const sendMessage = async (e: React.FormEvent) => {
 
     let assistantContent = '';
     let assistantId = Date.now() + 1;
+    let reasoningContent = '';
 
     try {
       const userResp = await api.post(`/api/v1/sessions/${sessionId}/messages`, {
@@ -104,7 +105,6 @@ const sendMessage = async (e: React.FormEvent) => {
       const decoder = new TextDecoder();
 
       if (reader) {
-        let reasoningContent = '';
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -118,12 +118,11 @@ const sendMessage = async (e: React.FormEvent) => {
               const content = data.slice(12);
               reasoningContent += content;
               setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, reasoning_content: (m.reasoning_content || '') + content } : m));
-            } else if (data.startsWith('[REASONING')) {
               continue;
-            } else {
-              assistantContent += data;
-              setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: assistantContent } : m));
             }
+            
+            assistantContent += data;
+            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: assistantContent } : m));
           }
         }
 

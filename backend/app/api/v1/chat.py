@@ -135,14 +135,18 @@ async def send_message_stream(
                     {"role": "user", "content": chat_message.message + user_context}
                 ]
 
+                reasoning_buffer = ""
                 async for chunk in get_ai_response(agent.ai_config, messages, stream=True):
                     if isinstance(chunk, dict):
                         if chunk.get("type") == "reasoning":
-                            full_response += chunk["content"]
-                            yield f"data: [REASONING] {chunk['content']}\n\n"
+                            reasoning_text = chunk.get("content", "")
+                            full_response += reasoning_text
+                            reasoning_buffer += reasoning_text
+                            yield f"data: [REASONING] {reasoning_text}\n\n"
                         elif chunk.get("type") == "content":
-                            full_response += chunk["content"]
-                            yield f"data: {chunk['content']}\n\n"
+                            content_text = chunk.get("content", "")
+                            full_response += content_text
+                            yield f"data: {content_text}\n\n"
                     else:
                         full_response += chunk
                         yield f"data: {chunk}\n\n"
