@@ -153,5 +153,5 @@ async def send_message_stream(
         return StreamingResponse(
             error_generate(),
             media_type="text/event-stream"
-        )}
+        )
 
