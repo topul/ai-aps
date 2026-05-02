@@ -102,5 +102,56 @@ def send_message_sync(
 
     except Exception as e:
         logger.error(f"处理消息失败: {str(e)}")
-        return {"response": f"抱歉，处理您的请求时出现错误: {str(e)}"}
+        return {"response": f"抱歉，处理您的请求时出现错误: {str(e)}"
+
+
+@router.post("/message/stream")
+async def send_message_stream(
+    chat_message: ChatMessage,
+    db: Session = Depends(get_db)
+):
+    """发送聊天消息（流式响应）"""
+    try:
+        agent = ChatAgent(db)
+
+        async def generate():
+            try:
+                full_response = ""
+                async for chunk in agent.process_message_non_stream(chat_message.message, chat_message.context):
+                    full_response += chunk
+                    yield f"data: {chunk}\n\n"
+                yield "data: [DONE]\n\n"
+            except Exception as e:
+                logger.error(f"生成响应失败: {str(e)}")
+                yield f"data: 错误: {str(e)}\n\n"
+                yield "data: [DONE]\n\n"
+
+        return StreamingResponse(
+            generate(),
+            media_type="text/event-stream"
+        )
+
+    except ValueError as e:
+        async def fallback_generate():
+            for char in "AI 对话功能需要配置 LLM API 密钥。请在用户中心配置AI服务。":
+                yield f"data: {char}\n\n"
+                await asyncio.sleep(0.02)
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(
+            fallback_generate(),
+            media_type="text/event-stream"
+        )
+
+    except Exception as e:
+        async def error_generate():
+            for char in f"抱歉，处理您的请求时出现错误: {str(e)}":
+                yield f"data: {char}\n\n"
+                await asyncio.sleep(0.02)
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(
+            error_generate(),
+            media_type="text/event-stream"
+        )}
 

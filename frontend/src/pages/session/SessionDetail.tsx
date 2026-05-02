@@ -16,9 +16,12 @@ function formatMessageContent(content: string) {
 
 function formatTime(isoString: string) {
   try {
-    const date = new Date(isoString + 'Z');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
+    let date = new Date(isoString);
+    if (isNaN(date.getTime())) {
+      date = new Date(isoString + '+00:00');
+    }
+    const hours = String(date.getUTCHours()).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
     return `${hours}:${minutes}`;
   } catch { return '--:--'; }
 }
@@ -70,32 +73,53 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
     };
     setMessages(prev => [...prev, tempMessage]);
 
+    let assistantContent = '';
+    let assistantId = Date.now() + 1;
+
     try {
-      await api.post(`/api/v1/sessions/${sessionId}/messages`, {
+      const userResp = await api.post(`/api/v1/sessions/${sessionId}/messages`, {
         role: 'user',
         content: userMessage,
       });
+      setMessages(prev => prev.map(m => m.id === tempMessage.id ? { ...m, id: userResp.data.id } : m));
 
-      const response = await api.post('/api/v1/chat/message/sync', {
-        message: userMessage,
-        context: { conversation_id: sessionId },
+      const response = await fetch('http://localhost:8000/api/v1/chat/message/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+        body: JSON.stringify({ message: userMessage, context: { conversation_id: sessionId } }),
       });
 
-      const replyContent = response.data.response || '已收到您的消息';
-      
-      const botResponse = await api.post(`/api/v1/sessions/${sessionId}/messages`, {
-        role: 'assistant',
-        content: replyContent,
-      });
-      setMessages(prev => [...prev, botResponse.data]);
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (reader) {
+        setMessages(prev => [...prev, { id: assistantId, conversation_id: sessionId, role: 'assistant', content: '', created_at: new Date().toISOString() }]);
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const text = decoder.decode(value);
+          const matches = text.matchAll(/data:\s*(.+)/g);
+          for (const match of matches) {
+            const data = match[1].trim();
+            if (data === '[DONE]') break;
+            assistantContent += data;
+            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: assistantContent } : m));
+          }
+        }
+
+        await api.post(`/api/v1/sessions/${sessionId}/messages`, {
+          role: 'assistant',
+          content: assistantContent || '已收到您的消息',
+        });
+      }
     } catch (error: any) {
       console.error('发送消息失败:', error);
       const errorMsg = error.response?.data?.response || error.message || '发送失败';
-      const botResponse = await api.post(`/api/v1/sessions/${sessionId}/messages`, {
-        role: 'assistant',
-        content: errorMsg,
-      });
-      setMessages(prev => [...prev, botResponse.data]);
+      setMessages(prev => [...prev, { id: assistantId, conversation_id: sessionId, role: 'assistant', content: errorMsg, created_at: new Date().toISOString() }]);
     } finally {
       setSending(false);
     }
