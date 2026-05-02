@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
 
@@ -11,6 +12,8 @@ class Conversation(Base):
     title = Column(String(255))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    messages = relationship("Message", back_populates="conversation", lazy="joined")
 
 
 class Message(Base):
@@ -21,3 +24,5 @@ class Message(Base):
     role = Column(String(20))
     content = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+    
+    conversation = relationship("Conversation", back_populates="messages")

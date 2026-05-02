@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, ReactNode } from 'react';
 import { Send, Loader2 } from 'lucide-react';
 import { api } from '../../services/api';
 import type { Message } from '../../types/session';
+import ReactMarkdown from 'react-markdown';
 
 interface SessionDetailProps {
   sessionId: number;
@@ -9,73 +10,7 @@ interface SessionDetailProps {
 
 function formatMessageContent(content: string) {
   if (!content) return <span className="text-muted-foreground">...</span>;
-  
-  const lines = content.split('\n');
-  const elements: React.ReactNode[] = [];
-  let inCodeBlock = false;
-  let codeContent: string[] = [];
-  let listItems: string[] = [];
-  
-  const flushList = () => {
-    if (listItems.length > 0) {
-      elements.push(...listItems.map((item, i) => {
-        if (item.startsWith('- ')) {
-          return <li key={`list-${elements.length}-${i}`} className="ml-4 list-disc">{item.slice(2)}</li>;
-        }
-        const numMatch = item.match(/^(\d+)\.\s(.+)/);
-        if (numMatch) {
-          return <li key={`list-${elements.length}-${i}`} className="ml-4 list-decimal">{numMatch[2]}</li>;
-        }
-        return <li key={`list-${elements.length}-${i}`} className="ml-4">{item}</li>;
-      }));
-      listItems = [];
-    }
-  };
-  
-  lines.forEach((line, i) => {
-    if (line.startsWith('```')) {
-      if (inCodeBlock) {
-        elements.push(<pre key={`code-${i}`} className="bg-black/30 p-2 rounded text-xs overflow-x-auto mb-2">{codeContent.join('\n')}</pre>);
-        codeContent = [];
-        inCodeBlock = false;
-      } else {
-        flushList();
-        inCodeBlock = true;
-      }
-      return;
-    }
-    
-    if (inCodeBlock) {
-      codeContent.push(line);
-      return;
-    }
-    
-    if (line.startsWith('# ')) {
-      flushList();
-      elements.push(<h1 key={`h1-${i}`} className="text-lg font-bold mb-2">{line.slice(2)}</h1>);
-    } else if (line.startsWith('## ')) {
-      flushList();
-      elements.push(<h2 key={`h2-${i}`} className="text-md font-semibold mb-1">{line.slice(3)}</h2>);
-    } else if (line.startsWith('### ')) {
-      flushList();
-      elements.push(<h3 key={`h3-${i}`} className="text-sm font-semibold mb-1">{line.slice(4)}</h3>);
-    } else if (line.startsWith('- ') || line.match(/^[-*]\s/)) {
-      listItems.push(line);
-    } else if (line.match(/^\d+\.\s/) || line.match(/^\d+[\)]\s/)) {
-      listItems.push(line);
-    } else if (line.match(/^>\s/)) {
-      flushList();
-      elements.push(<blockquote key={`quote-${i}`} className="border-l-2 border-tech-blue/50 pl-3 italic text-muted-foreground">{line.slice(2)}</blockquote>);
-    } else if (line.trim() === '') {
-      flushList();
-    } else {
-      flushList();
-      elements.push(<p key={`p-${i}`} className="mb-1">{line}</p>);
-    }
-  });
-  
-  flushList();
-  return <div className="space-y-0.5">{elements}</div>;
+  return <ReactMarkdown>{content}</ReactMarkdown>;
 }
 
 function formatTime(isoString: string) {
@@ -120,7 +55,7 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const sendMessage = async (e: React.FormEvent) => {
+const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || sending || !sessionId) return;
 
@@ -137,8 +72,8 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
     };
     setMessages(prev => [...prev, tempMessage]);
 
-    let assistantId = Date.now() + 1;
     let assistantContent = '';
+    let assistantId = Date.now() + 1;
 
     try {
       const userResp = await api.post(`/api/v1/sessions/${sessionId}/messages`, {
@@ -146,6 +81,8 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
         content: userMessage,
       });
       setMessages(prev => prev.map(m => m.id === tempMessage.id ? { ...m, id: userResp.data.id } : m));
+
+      setMessages(prev => [...prev, { id: assistantId, conversation_id: sessionId, role: 'assistant', content: '', created_at: new Date().toISOString() }]);
 
       const response = await fetch('http://localhost:8000/api/v1/chat/message/stream', {
         method: 'POST',
@@ -169,13 +106,7 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
             const data = match[1].trim();
             if (data === '[DONE]') break;
             assistantContent += data;
-            setMessages(prev => {
-              const exists = prev.find(m => m.id === assistantId);
-              if (exists) {
-                return prev.map(m => m.id === assistantId ? { ...m, content: assistantContent } : m);
-              }
-              return [...prev, { id: assistantId, conversation_id: sessionId, role: 'assistant', content: assistantContent, created_at: new Date().toISOString() }];
-            });
+            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: assistantContent } : m));
           }
         }
 
