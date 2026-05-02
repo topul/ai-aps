@@ -3,9 +3,11 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.services.chat_agent import ChatAgent
+from app.services.ai_service import get_ai_response
 from pydantic import BaseModel
 import asyncio
 import logging
+import json
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -117,7 +119,23 @@ async def send_message_stream(
         async def generate():
             try:
                 full_response = ""
-                async for chunk in await agent.process_message_non_stream(chat_message.message, chat_message.context):
+                intent = agent._classify_intent(chat_message.message)
+                system_context = agent._get_system_context()
+                user_context = ""
+
+                if intent == "query":
+                    data = agent._query_data(chat_message.message)
+                    user_context = f"\n\n相关数据:\n{json.dumps(data, ensure_ascii=False, indent=2)}"
+                elif intent == "analyze":
+                    analysis = agent._analyze_data()
+                    user_context = f"\n\n分析结果:\n{json.dumps(analysis, ensure_ascii=False, indent=2)}"
+
+                messages = [
+                    {"role": "system", "content": system_context},
+                    {"role": "user", "content": chat_message.message + user_context}
+                ]
+
+                async for chunk in get_ai_response(agent.ai_config, messages, stream=True):
                     full_response += chunk
                     yield f"data: {chunk}\n\n"
                 yield "data: [DONE]\n\n"
