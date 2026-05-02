@@ -68,3 +68,9 @@ backend/app/
 - `REFACTOR_PLAN.md` - Recent refactoring details
 - `docker-compose.yml` - Service orchestration
 - `.env.example` - Required env vars
+## Git Workflow
+After every code change, ALWAYS run:
+```bash
+git add . && git commit -m "msg" && git push
+```
+Do not wait to be reminded. Commit + push is automated after every modification.
