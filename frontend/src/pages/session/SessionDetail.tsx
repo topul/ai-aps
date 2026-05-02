@@ -2,15 +2,26 @@ import { useState, useEffect, useRef } from 'react';
 import { Send, Loader2 } from 'lucide-react';
 import { api } from '../../services/api';
 import type { Message } from '../../types/session';
-import ReactMarkdown from 'react-markdown';
 
 interface SessionDetailProps {
   sessionId: number;
 }
 
 function formatMessageContent(content: string) {
-  if (!content) return <p className="mb-1">...</p>;
-  return <ReactMarkdown>{content}</ReactMarkdown>;
+  if (!content) return <p className="mb-2 text-muted-foreground">...</p>;
+  const lines = content.split('\n');
+  return (
+    <div className="space-y-1">
+      {lines.map((line, i) => {
+        if (line.startsWith('# ')) return <h1 key={i} className="text-lg font-bold mb-2">{line.slice(2)}</h1>;
+        if (line.startsWith('## ')) return <h2 key={i} className="text-md font-semibold mb-1">{line.slice(3)}</h2>;
+        if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc">{line.slice(2)}</li>;
+        if (line.match(/^\d+\. /)) return <li key={i} className="ml-4 list-decimal">{line.replace(/^\d+\. /, '')}</li>;
+        if (line.match(/^```/)) return null;
+        return <p key={i} className="mb-1">{line || '\u00A0'}</p>;
+      })}
+    </div>
+  );
 }
 
 function formatTime(isoString: string) {
@@ -154,17 +165,19 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
                     : 'bg-dark-card border border-tech-blue/20'
                 }`}
               >
-                <div className="text-sm whitespace-pre-wrap">
+                <div className="text-sm prose prose-invert prose-sm max-w-none">
                   {formatMessageContent(msg.content)}
                 </div>
-                <p className="text-xs opacity-60 mt-2">
-                  {formatTime(msg.created_at)}
-                </p>
+                {msg.content && msg.role === 'assistant' && !sending && (
+                  <p className="text-xs opacity-60 mt-2">
+                    {formatTime(msg.created_at)}
+                  </p>
+                )}
               </div>
             </div>
           ))
         )}
-        {sending && (
+        {sending && messages.filter(m => m.role === 'assistant').every(m => !m.content) && (
           <div className="flex justify-start">
             <div className="max-w-[80%] p-4 rounded-lg bg-dark-card border border-tech-blue/20">
               <div className="flex items-center gap-2 text-muted-foreground">
