@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, ReactNode } from 'react';
 import { Send, Loader2 } from 'lucide-react';
 import { api } from '../../services/api';
 import type { Message } from '../../types/session';
@@ -8,20 +8,74 @@ interface SessionDetailProps {
 }
 
 function formatMessageContent(content: string) {
-  if (!content) return <p className="mb-2 text-muted-foreground">...</p>;
+  if (!content) return <span className="text-muted-foreground">...</span>;
+  
   const lines = content.split('\n');
-  return (
-    <div className="space-y-1">
-      {lines.map((line, i) => {
-        if (line.startsWith('# ')) return <h1 key={i} className="text-lg font-bold mb-2">{line.slice(2)}</h1>;
-        if (line.startsWith('## ')) return <h2 key={i} className="text-md font-semibold mb-1">{line.slice(3)}</h2>;
-        if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc">{line.slice(2)}</li>;
-        if (line.match(/^\d+\. /)) return <li key={i} className="ml-4 list-decimal">{line.replace(/^\d+\. /, '')}</li>;
-        if (line.match(/^```/)) return null;
-        return <p key={i} className="mb-1">{line || '\u00A0'}</p>;
-      })}
-    </div>
-  );
+  const elements: React.ReactNode[] = [];
+  let inCodeBlock = false;
+  let codeContent: string[] = [];
+  let listItems: string[] = [];
+  
+  const flushList = () => {
+    if (listItems.length > 0) {
+      elements.push(...listItems.map((item, i) => {
+        if (item.startsWith('- ')) {
+          return <li key={`list-${elements.length}-${i}`} className="ml-4 list-disc">{item.slice(2)}</li>;
+        }
+        const numMatch = item.match(/^(\d+)\.\s(.+)/);
+        if (numMatch) {
+          return <li key={`list-${elements.length}-${i}`} className="ml-4 list-decimal">{numMatch[2]}</li>;
+        }
+        return <li key={`list-${elements.length}-${i}`} className="ml-4">{item}</li>;
+      }));
+      listItems = [];
+    }
+  };
+  
+  lines.forEach((line, i) => {
+    if (line.startsWith('```')) {
+      if (inCodeBlock) {
+        elements.push(<pre key={`code-${i}`} className="bg-black/30 p-2 rounded text-xs overflow-x-auto mb-2">{codeContent.join('\n')}</pre>);
+        codeContent = [];
+        inCodeBlock = false;
+      } else {
+        flushList();
+        inCodeBlock = true;
+      }
+      return;
+    }
+    
+    if (inCodeBlock) {
+      codeContent.push(line);
+      return;
+    }
+    
+    if (line.startsWith('# ')) {
+      flushList();
+      elements.push(<h1 key={`h1-${i}`} className="text-lg font-bold mb-2">{line.slice(2)}</h1>);
+    } else if (line.startsWith('## ')) {
+      flushList();
+      elements.push(<h2 key={`h2-${i}`} className="text-md font-semibold mb-1">{line.slice(3)}</h2>);
+    } else if (line.startsWith('### ')) {
+      flushList();
+      elements.push(<h3 key={`h3-${i}`} className="text-sm font-semibold mb-1">{line.slice(4)}</h3>);
+    } else if (line.startsWith('- ') || line.match(/^[-*]\s/)) {
+      listItems.push(line);
+    } else if (line.match(/^\d+\.\s/) || line.match(/^\d+[\)]\s/)) {
+      listItems.push(line);
+    } else if (line.match(/^>\s/)) {
+      flushList();
+      elements.push(<blockquote key={`quote-${i}`} className="border-l-2 border-tech-blue/50 pl-3 italic text-muted-foreground">{line.slice(2)}</blockquote>);
+    } else if (line.trim() === '') {
+      flushList();
+    } else {
+      flushList();
+      elements.push(<p key={`p-${i}`} className="mb-1">{line}</p>);
+    }
+  });
+  
+  flushList();
+  return <div className="space-y-0.5">{elements}</div>;
 }
 
 function formatTime(isoString: string) {
@@ -158,34 +212,33 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
               key={msg.id}
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <div
-                className={`max-w-[80%] p-4 rounded-lg ${
-                  msg.role === 'user'
-                    ? 'bg-gradient-tech text-white'
-                    : 'bg-dark-card border border-tech-blue/20'
-                }`}
-              >
-                <div className="text-sm prose prose-invert prose-sm max-w-none">
-                  {formatMessageContent(msg.content)}
+              {(msg.role === 'assistant' && !msg.content) ? (
+                <div className="max-w-[80%] p-4 rounded-lg bg-dark-card border border-tech-blue/20">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">AI 正在思考...</span>
+                  </div>
                 </div>
-                {msg.content && msg.role === 'assistant' && !sending && (
-                  <p className="text-xs opacity-60 mt-2">
-                    {formatTime(msg.created_at)}
-                  </p>
-                )}
-              </div>
+              ) : (
+                <div
+                  className={`max-w-[80%] p-4 rounded-lg ${
+                    msg.role === 'user'
+                      ? 'bg-gradient-tech text-white'
+                      : 'bg-dark-card border border-tech-blue/20'
+                  }`}
+                >
+                  <div className="text-sm">
+                    {formatMessageContent(msg.content)}
+                  </div>
+                  {msg.content && !sending && (
+                    <p className="text-xs opacity-60 mt-2">
+                      {formatTime(msg.created_at)}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           ))
-        )}
-        {sending && messages.filter(m => m.role === 'assistant').every(m => !m.content) && (
-          <div className="flex justify-start">
-            <div className="max-w-[80%] p-4 rounded-lg bg-dark-card border border-tech-blue/20">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">AI 正在思考...</span>
-              </div>
-            </div>
-          </div>
         )}
         <div ref={messagesEndRef} />
       </div>
