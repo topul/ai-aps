@@ -136,8 +136,15 @@ async def send_message_stream(
                 ]
 
                 async for chunk in get_ai_response(agent.ai_config, messages, stream=True):
-                    full_response += chunk
-                    yield f"data: {chunk}\n\n"
+                    if isinstance(chunk, dict):
+                        if chunk.get("type") == "reasoning":
+                            yield f"data: [REASONING] {chunk['content']}\n\n"
+                        elif chunk.get("type") == "content":
+                            full_response += chunk["content"]
+                            yield f"data: {chunk['content']}\n\n"
+                    else:
+                        full_response += chunk
+                        yield f"data: {chunk}\n\n"
                 yield "data: [DONE]\n\n"
             except Exception as e:
                 logger.error(f"生成响应失败: {str(e)}")

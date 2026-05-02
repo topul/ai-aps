@@ -1,11 +1,15 @@
 import { useState, useEffect, useRef, ReactNode } from 'react';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '../../services/api';
 import type { Message } from '../../types/session';
 import ReactMarkdown from 'react-markdown';
 
 interface SessionDetailProps {
   sessionId: number;
+}
+
+interface MessageWithReasoning extends Message {
+  reasoning_content?: string;
 }
 
 function formatMessageContent(content: string) {
@@ -26,7 +30,7 @@ function formatTime(isoString: string) {
 }
 
 export default function SessionDetail({ sessionId }: SessionDetailProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<MessageWithReasoning[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -105,8 +109,15 @@ const sendMessage = async (e: React.FormEvent) => {
           for (const match of matches) {
             const data = match[1].trim();
             if (data === '[DONE]') break;
-            assistantContent += data;
-            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: assistantContent } : m));
+            
+            const reasoningMatch = data.match(/^\[REASONING\]\s*(.+)/);
+            if (reasoningMatch) {
+              assistantContent = reasoningMatch[1];
+              setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, reasoning_content: (m.reasoning_content || '') + assistantContent } : m));
+            } else {
+              assistantContent += data;
+              setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: assistantContent } : m));
+            }
           }
         }
 
@@ -158,6 +169,17 @@ const sendMessage = async (e: React.FormEvent) => {
                       : 'bg-dark-card border border-tech-blue/20'
                   }`}
                 >
+                  {msg.reasoning_content && (
+                    <div className="mb-3 p-3 rounded-lg bg-black/20 border border-gray-700">
+                      <div className="flex items-center gap-2 mb-2 text-gray-400 text-xs">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span>深度思考中...</span>
+                      </div>
+                      <div className="text-sm text-gray-300 whitespace-pre-wrap">
+                        {msg.reasoning_content}
+                      </div>
+                    </div>
+                  )}
                   <div className="text-sm">
                     {formatMessageContent(msg.content)}
                   </div>

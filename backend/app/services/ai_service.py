@@ -77,7 +77,7 @@ class ClaudeService(AIService):
                                     if event.get("type") == "content_block_delta":
                                         delta = event.get("delta", {})
                                         if delta.get("type") == "text_delta":
-                                            yield delta.get("text", "")
+                                            yield {"type": "content", "content": delta.get("text", "")}
                                 except json.JSONDecodeError:
                                     continue
                 else:
@@ -86,7 +86,7 @@ class ClaudeService(AIService):
                     result = response.json()
                     content = result.get("content", [])
                     if content:
-                        yield content[0].get("text", "")
+                        yield {"type": "content", "content": content[0].get("text", "")}
 
         except httpx.HTTPError as e:
             logger.error(f"Claude API错误: {e}")
@@ -137,9 +137,12 @@ class OpenAIService(AIService):
                                     choices = event.get("choices", [])
                                     if choices:
                                         delta = choices[0].get("delta", {})
+                                        reasoning = delta.get("reasoning_content")
                                         content = delta.get("content")
+                                        if reasoning:
+                                            yield {"type": "reasoning", "content": reasoning}
                                         if content:
-                                            yield content
+                                            yield {"type": "content", "content": content}
                                 except json.JSONDecodeError:
                                     continue
                 else:
@@ -148,14 +151,20 @@ class OpenAIService(AIService):
                     result = response.json()
                     choices = result.get("choices", [])
                     if choices:
-                        yield choices[0].get("message", {}).get("content", "")
+                        message = choices[0].get("message", {})
+                        reasoning = message.get("reasoning_content")
+                        content = message.get("content", "")
+                        if reasoning:
+                            yield {"type": "reasoning", "content": reasoning}
+                        if content:
+                            yield {"type": "content", "content": content}
 
         except httpx.HTTPError as e:
             logger.error(f"OpenAI API错误: {e}")
-            yield f"[错误] OpenAI API调用失败: {str(e)}"
+            yield {"type": "content", "content": f"[错误] OpenAI API调用失败: {str(e)}"}
         except Exception as e:
             logger.error(f"未知错误: {e}")
-            yield f"[错误] {str(e)}"
+            yield {"type": "content", "content": f"[错误] {str(e)}"}
 
 
 class CustomAPIService(AIService):
@@ -199,9 +208,12 @@ class CustomAPIService(AIService):
                                     choices = event.get("choices", [])
                                     if choices:
                                         delta = choices[0].get("delta", {})
+                                        reasoning = delta.get("reasoning_content")
                                         content = delta.get("content")
+                                        if reasoning:
+                                            yield {"type": "reasoning", "content": reasoning}
                                         if content:
-                                            yield content
+                                            yield {"type": "content", "content": content}
                                 except json.JSONDecodeError:
                                     continue
                 else:
@@ -210,14 +222,20 @@ class CustomAPIService(AIService):
                     result = response.json()
                     choices = result.get("choices", [])
                     if choices:
-                        yield choices[0].get("message", {}).get("content", "")
+                        message = choices[0].get("message", {})
+                        reasoning = message.get("reasoning_content")
+                        content = message.get("content", "")
+                        if reasoning:
+                            yield {"type": "reasoning", "content": reasoning}
+                        if content:
+                            yield {"type": "content", "content": content}
 
         except httpx.HTTPError as e:
             logger.error(f"自定义API错误: {e}")
-            yield f"[错误] 自定义API调用失败: {str(e)}"
+            yield {"type": "content", "content": f"[错误] 自定义API调用失败: {str(e)}"}
         except Exception as e:
             logger.error(f"未知错误: {e}")
-            yield f"[错误] {str(e)}"
+            yield {"type": "content", "content": f"[错误] {str(e)}"
 
 
 class AIServiceFactory:
@@ -240,7 +258,7 @@ async def get_ai_response(
     config: AIConfig,
     messages: list[dict],
     stream: bool = True
-) -> AsyncIterator[str]:
+) -> AsyncIterator[dict]:
     """
     获取AI响应的便捷函数
 
@@ -250,7 +268,7 @@ async def get_ai_response(
         stream: 是否流式返回
 
     Yields:
-        响应文本片段
+        dict: {"type": "content"/"reasoning", "content": "..."}
     """
     service = AIServiceFactory.create(config)
     async for chunk in service.chat(messages, stream):
