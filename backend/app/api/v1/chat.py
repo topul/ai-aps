@@ -138,6 +138,7 @@ async def send_message_stream(
                 async for chunk in get_ai_response(agent.ai_config, messages, stream=True):
                     if isinstance(chunk, dict):
                         if chunk.get("type") == "reasoning":
+                            full_response += chunk["content"]
                             yield f"data: [REASONING] {chunk['content']}\n\n"
                         elif chunk.get("type") == "content":
                             full_response += chunk["content"]

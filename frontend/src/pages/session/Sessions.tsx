@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, MessageSquare, Search, Edit2, Check, X } from 'lucide-react';
+import { Plus, Trash2, MessageSquare, Search, Edit2, Check, X, MoreVertical } from 'lucide-react';
 import { api } from '../../services/api';
 import type { Session } from '../../types/session';
 import SessionDetail from './SessionDetail';
@@ -11,6 +11,7 @@ export default function Sessions() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
 
@@ -151,18 +152,43 @@ export default function Sessions() {
                   ) : (
                     <>
                       <h3 className="font-medium text-white text-sm truncate flex-1">{session.title || '新会话'}</h3>
-                      <button
-                        onClick={(e) => startEditTitle(session, e)}
-                        className="p-1 rounded opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-white transition-all"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={(e) => deleteSession(session.id, e)}
-                        className="p-1 rounded opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="relative">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId(openMenuId === session.id ? null : session.id);
+                          }}
+                          className="p-1 rounded text-muted-foreground hover:text-white"
+                        >
+                          <MoreVertical className="w-3.5 h-3.5" />
+                        </button>
+                        {openMenuId === session.id && (
+                          <div className="absolute right-0 top-6 w-24 rounded-lg bg-dark-card border border-tech-blue/20 shadow-lg z-10">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEditTitle(session, e);
+                                setOpenMenuId(null);
+                              }}
+                              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-muted-foreground hover:text-white hover:bg-dark-bg"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                              编辑
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteSession(session.id, e);
+                                setOpenMenuId(null);
+                              }}
+                              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-400 hover:bg-red-500/10"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              删除
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </>
                   )}
                 </div>
