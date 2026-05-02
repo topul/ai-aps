@@ -30,8 +30,9 @@ export default function SessionList() {
       const newSession = response.data;
       setSessions([newSession, ...sessions]);
       window.location.href = `/sessions/${newSession.id}`;
-    } catch (error) {
+    } catch (error: any) {
       console.error('创建会话失败:', error);
+      alert('创建会话失败: ' + (error.response?.data?.detail || error.message));
     }
   };
 

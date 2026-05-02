@@ -3,8 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import AppLayout from './components/layout/AppLayout';
 import Login from './pages/auth/Login';
-import SessionList from './pages/session/SessionList';
-import SessionDetail from './pages/session/SessionDetail';
+import Sessions from './pages/session/Sessions';
 import MaterialManagement from './pages/data-management/MaterialManagement';
 import ResourceManagement from './pages/data-management/ResourceManagement';
 import BOMManagement from './pages/data-management/BOMManagement';
@@ -62,9 +61,9 @@ function App() {
           <Route path="/" element={<AuthGuard><AppLayout /></AuthGuard>}>
             <Route index element={<Navigate to="/sessions" replace />} />
             
-            {/* 会话模块 */}
-            <Route path="sessions" element={<SessionList />} />
-            <Route path="sessions/:id" element={<SessionDetail />} />
+          {/* 会话模块 */}
+            <Route path="sessions" element={<Sessions />} />
+            <Route path="sessions/:id" element={<Sessions />} />
             
             {/* 数据管理模块 */}
             <Route path="data" element={<Navigate to="/data/materials" replace />} />

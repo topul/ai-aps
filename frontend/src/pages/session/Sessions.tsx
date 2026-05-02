@@ -1,0 +1,143 @@
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Plus, Trash2, MessageSquare, Search } from 'lucide-react';
+import { api } from '../../services/api';
+import type { Session } from '../../types/session';
+import SessionDetail from './SessionDetail';
+
+export default function Sessions() {
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const { id } = useParams<{ id?: string }>();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    fetchSessions();
+  }, []);
+
+  const fetchSessions = async () => {
+    try {
+      const response = await api.get('/api/v1/sessions');
+      setSessions(response.data);
+    } catch (error) {
+      console.error('获取会话列表失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createSession = async () => {
+    try {
+      const response = await api.post('/api/v1/sessions', { title: '新会话' });
+      const newSession = response.data;
+      setSessions([newSession, ...sessions]);
+      navigate(`/sessions/${newSession.id}`);
+    } catch (error: any) {
+      console.error('创建会话失败:', error);
+      alert('创建会话失败: ' + (error.response?.data?.detail || error.message || '未知错误'));
+    }
+  };
+
+  const deleteSession = async (sessionId: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm('确定要删除这个会话吗？')) return;
+    
+    try {
+      await api.delete(`/api/v1/sessions/${sessionId}`);
+      setSessions(sessions.filter(s => s.id !== sessionId));
+      if (id && parseInt(id) === sessionId) {
+        navigate('/sessions');
+      }
+    } catch (error) {
+      console.error('删除会话失败:', error);
+    }
+  };
+
+  const filteredSessions = sessions.filter(s => 
+    s.title?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="flex h-[calc(100vh-8rem)] gap-6">
+      {/* 左侧会话列表 */}
+      <div className="w-80 flex flex-col bg-dark-card/50 rounded-lg border border-tech-blue/20 overflow-hidden">
+        <div className="p-4 border-b border-tech-blue/20">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xl font-bold text-white">会话</h2>
+            <button
+              onClick={createSession}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gradient-tech text-white text-sm hover:opacity-90 transition-opacity"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              新建
+            </button>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="搜索会话..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 text-sm rounded-lg bg-dark-bg border border-tech-blue/20 text-white focus:outline-none focus:border-tech-blue/50"
+            />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-2">
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="w-6 h-6 border-2 border-tech-blue border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : filteredSessions.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">暂无会话</p>
+            </div>
+          ) : (
+            filteredSessions.map((session) => (
+              <div
+                key={session.id}
+                onClick={() => navigate(`/sessions/${session.id}`)}
+                className={`p-3 rounded-lg mb-2 cursor-pointer transition-colors ${
+                  id && parseInt(id) === session.id
+                    ? 'bg-tech-blue/20 border border-tech-blue/30'
+                    : 'hover:bg-dark-bg border border-transparent'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium text-white text-sm truncate flex-1">{session.title || '新会话'}</h3>
+                  <button
+                    onClick={(e) => deleteSession(session.id, e)}
+                    className="p-1 rounded opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {new Date(session.updated_at).toLocaleString('zh-CN')}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* 右侧会话内容 */}
+      <div className="flex-1 bg-dark-card/50 rounded-lg border border-tech-blue/20 overflow-hidden">
+        {id ? (
+          <SessionDetail sessionId={parseInt(id)} />
+        ) : (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <div className="text-center">
+              <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>选择一个会话或新建会话</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

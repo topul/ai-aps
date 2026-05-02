@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
 import { Send } from 'lucide-react';
 import { api } from '../../services/api';
-import type { Session, Message } from '../../types/session';
+import type { Message } from '../../types/session';
+
+interface SessionDetailProps {
+  sessionId: number;
+}
 
 function formatMessageContent(content: string) {
   return content.split('\n').map((line, i) => (
@@ -10,9 +13,7 @@ function formatMessageContent(content: string) {
   ));
 }
 
-export default function SessionDetail() {
-  const { id } = useParams<{ id: string }>();
-  const [session, setSession] = useState<Session | null>(null);
+export default function SessionDetail({ sessionId }: SessionDetailProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
@@ -20,17 +21,16 @@ export default function SessionDetail() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (id) fetchSession(id);
-  }, [id]);
+    if (sessionId) fetchSession(sessionId);
+  }, [sessionId]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  const fetchSession = async (sessionId: string) => {
+  const fetchSession = async (id: number) => {
     try {
-      const response = await api.get(`/api/v1/sessions/${sessionId}`);
-      setSession(response.data);
+      const response = await api.get(`/api/v1/sessions/${id}`);
       setMessages(response.data.messages || []);
     } catch (error) {
       console.error('获取会话失败:', error);
@@ -45,7 +45,7 @@ export default function SessionDetail() {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || sending) return;
+    if (!input.trim() || sending || !sessionId) return;
 
     const userMessage = input.trim();
     setInput('');
@@ -53,7 +53,7 @@ export default function SessionDetail() {
 
     const tempMessage: Message = {
       id: Date.now(),
-      conversation_id: Number(id),
+      conversation_id: sessionId,
       role: 'user',
       content: userMessage,
       created_at: new Date().toISOString(),
@@ -61,17 +61,17 @@ export default function SessionDetail() {
     setMessages(prev => [...prev, tempMessage]);
 
     try {
-      await api.post(`/api/v1/sessions/${id}/messages`, {
+      await api.post(`/api/v1/sessions/${sessionId}/messages`, {
         role: 'user',
         content: userMessage,
       });
 
       const response = await api.post('/api/v1/chat/message', {
         message: userMessage,
-        context: { conversation_id: id },
+        context: { conversation_id: sessionId },
       });
 
-      const botResponse = await api.post(`/api/v1/sessions/${id}/messages`, {
+      const botResponse = await api.post(`/api/v1/sessions/${sessionId}/messages`, {
         role: 'assistant',
         content: response.data.message || response.data.content || '已收到您的消息',
       });
@@ -83,21 +83,15 @@ export default function SessionDetail() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-tech-blue border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-8 h-8 border-2 border-tech-blue border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   return (
-    <div className="flex flex-col h-[calc(100vh-12rem)]">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold text-white">{session?.title || '会话详情'}</h2>
-      </div>
-
-      <div className="flex-1 overflow-y-auto space-y-4 p-4 bg-dark-card/50 rounded-lg">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto space-y-4 p-4">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground">
             <p>开始发送消息进行对话</p>
@@ -128,20 +122,20 @@ export default function SessionDetail() {
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={sendMessage} className="mt-4">
+      <form onSubmit={sendMessage} className="p-4 border-t border-tech-blue/20">
         <div className="flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="输入消息..."
-            className="flex-1 px-4 py-3 rounded-lg bg-dark-card border border-tech-blue/20 text-white focus:outline-none focus:border-tech-blue/50"
+            className="flex-1 px-4 py-3 rounded-lg bg-dark-bg border border-tech-blue/20 text-white focus:outline-none focus:border-tech-blue/50"
             disabled={sending}
           />
           <button
             type="submit"
             disabled={sending || !input.trim()}
-            className="px-4 py-2 rounded-lg bg-gradient-tech text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="px-4 py-2 rounded-lg bg-gradient-tech text-white hover:opacity-90 disabled:opacity-50"
           >
             <Send className="w-5 h-5" />
           </button>
