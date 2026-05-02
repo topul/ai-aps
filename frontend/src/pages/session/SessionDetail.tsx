@@ -2,10 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { Send, Loader2 } from 'lucide-react';
 import { api } from '../../services/api';
 import type { Message } from '../../types/session';
+import ReactMarkdown from 'react-markdown';
 
 interface SessionDetailProps {
   sessionId: number;
-  onTitleChange?: (title: string) => void;
+}
+
+function formatMessageContent(content: string) {
+  if (!content) return <p className="mb-1">...</p>;
+  return <ReactMarkdown>{content}</ReactMarkdown>;
 }
 
 function formatMessageContent(content: string) {
@@ -73,8 +78,8 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
     };
     setMessages(prev => [...prev, tempMessage]);
 
-    let assistantContent = '';
     let assistantId = Date.now() + 1;
+    let assistantContent = '';
 
     try {
       const userResp = await api.post(`/api/v1/sessions/${sessionId}/messages`, {
@@ -96,8 +101,6 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
       const decoder = new TextDecoder();
 
       if (reader) {
-        setMessages(prev => [...prev, { id: assistantId, conversation_id: sessionId, role: 'assistant', content: '', created_at: new Date().toISOString() }]);
-
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -107,7 +110,13 @@ export default function SessionDetail({ sessionId }: SessionDetailProps) {
             const data = match[1].trim();
             if (data === '[DONE]') break;
             assistantContent += data;
-            setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: assistantContent } : m));
+            setMessages(prev => {
+              const exists = prev.find(m => m.id === assistantId);
+              if (exists) {
+                return prev.map(m => m.id === assistantId ? { ...m, content: assistantContent } : m);
+              }
+              return [...prev, { id: assistantId, conversation_id: sessionId, role: 'assistant', content: assistantContent, created_at: new Date().toISOString() }];
+            });
           }
         }
 
