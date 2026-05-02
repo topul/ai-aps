@@ -87,6 +87,31 @@ def get_ai_config(config_id: int, db: Session = Depends(get_db)):
     return config
 
 
+class AIConfigResponseWithKey(BaseModel):
+    """包含API密钥的响应"""
+    id: int
+    name: str
+    provider: str
+    api_key: Optional[str]
+    api_base: Optional[str]
+    model: str
+    parameters: dict
+    is_active: bool
+    is_default: bool
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/{config_id}/detail", response_model=AIConfigResponseWithKey)
+def get_ai_config_with_key(config_id: int, db: Session = Depends(get_db)):
+    """获取AI配置详情（包含API密钥，仅管理员或本人使用）"""
+    config = db.query(AIConfig).filter(AIConfig.id == config_id).first()
+    if not config:
+        raise HTTPException(status_code=404, detail="AI配置不存在")
+    return config
+
+
 @router.post("/", response_model=AIConfigResponseSafe)
 def create_ai_config(config: AIConfigCreate, db: Session = Depends(get_db)):
     """创建AI配置"""

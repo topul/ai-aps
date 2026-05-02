@@ -195,3 +195,50 @@ class ChatAgent:
         except Exception as e:
             logger.error(f"处理消息失败: {str(e)}")
             return f"抱歉，处理您的请求时出现错误: {str(e)}"
+
+    def process_message_sync(self, message: str, context: dict = None) -> str:
+        """同步版本 - 处理用户消息"""
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                result = []
+                async def get_result():
+                    result.append(await self.process_message_non_stream(message, context))
+                asyncio.create_task(get_result())
+                import time
+                time.sleep(0.5)
+                return result[0] if result else "处理中..."
+        except:
+            pass
+        
+        # Fallback: 非异步调用
+        try:
+            intent = self._classify_intent(message)
+            system_context = self._get_system_context()
+            user_context = ""
+
+            if intent == "query":
+                data = self._query_data(message)
+                user_context = f"\n\n相关数据:\n{json.dumps(data, ensure_ascii=False, indent=2)}"
+            elif intent == "analyze":
+                analysis = self._analyze_data()
+                user_context = f"\n\n分析结果:\n{json.dumps(analysis, ensure_ascii=False, indent=2)}"
+
+            messages = [
+                {"role": "system", "content": system_context},
+                {"role": "user", "content": message + user_context}
+            ]
+
+            response_text = ""
+            import asyncio
+            async def get_response():
+                nonlocal response_text
+                async for chunk in get_ai_response(self.ai_config, messages, stream=False):
+                    response_text += chunk
+            
+            asyncio.run(get_response())
+            return response_text
+        except Exception as e:
+            logger.error(f"处理消息失败: {str(e)}")
+            return f"抱歉，处理您的请求时出现错误: {str(e)}"

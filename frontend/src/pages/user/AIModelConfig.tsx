@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Save, CheckCircle, XCircle, Plus, Edit2, Trash2 } from 'lucide-react';
+import { Save, CheckCircle, XCircle, Plus, Edit2, Trash2, Eye, EyeOff } from 'lucide-react';
 import { api } from '../../services/api';
 
 interface AIConfigItem {
   id: number;
   name: string;
   provider: string;
+  api_key?: string;
   api_base?: string;
   model: string;
   parameters: { temperature?: number; max_tokens?: number };
@@ -20,6 +21,7 @@ export default function AIModelConfig() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [showApiKey, setShowApiKey] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     provider: 'openai',
@@ -41,19 +43,23 @@ export default function AIModelConfig() {
     finally { setLoading(false); }
   };
 
-  const handleEdit = (config: AIConfigItem) => {
-    setEditingId(config.id);
-    setFormData({
-      name: config.name,
-      provider: config.provider,
-      api_key: '',
-      api_base: config.api_base || '',
-      model: config.model,
-      temperature: config.parameters?.temperature || 0.7,
-      max_tokens: config.parameters?.max_tokens || 2000,
-      is_default: config.is_default,
-    });
-    setTestResult(null);
+  const handleEdit = async (config: AIConfigItem) => {
+    try {
+      const response = await api.get(`/api/v1/ai-config/${config.id}/detail`);
+      const detail = response.data;
+      setEditingId(config.id);
+      setFormData({
+        name: detail.name,
+        provider: detail.provider,
+        api_key: detail.api_key || '',
+        api_base: detail.api_base || '',
+        model: detail.model,
+        temperature: detail.parameters?.temperature || 0.7,
+        max_tokens: detail.parameters?.max_tokens || 2000,
+        is_default: config.is_default,
+      });
+      setTestResult(null);
+    } catch { alert('获取配置详情失败'); }
   };
 
   const handleNew = () => {
@@ -247,13 +253,22 @@ export default function AIModelConfig() {
             
             <div className="col-span-2">
               <label className="block text-sm text-muted-foreground mb-1">API Key {editingId && '(留空则不修改)'}</label>
-              <input
-                type="password"
-                value={formData.api_key}
-                onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg bg-dark-bg border border-tech-blue/20 text-white"
-                placeholder="sk-..."
-              />
+              <div className="relative">
+                <input
+                  type={showApiKey ? "text" : "password"}
+                  value={formData.api_key}
+                  onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
+                  className="w-full px-3 py-2 pr-10 rounded-lg bg-dark-bg border border-tech-blue/20 text-white"
+                  placeholder="sk-..."
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                >
+                  {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
             
             {formData.provider === 'custom' && (
