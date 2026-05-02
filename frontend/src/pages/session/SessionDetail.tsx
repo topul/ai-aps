@@ -13,12 +13,6 @@ function formatMessageContent(content: string) {
   return <ReactMarkdown>{content}</ReactMarkdown>;
 }
 
-function formatMessageContent(content: string) {
-  return content.split('\n').map((line, i) => (
-    <p key={i} className="mb-1">{line || '\u00A0'}</p>
-  ));
-}
-
 function formatTime(isoString: string) {
   try {
     let date = new Date(isoString);
