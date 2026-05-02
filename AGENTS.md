@@ -74,3 +74,13 @@ After every code change, ALWAYS run:
 git add . && git commit -m "msg" && git push
 ```
 Do not wait to be reminded. Commit + push is automated after every modification.
+
+## Git Workflow
+After every code change, ALWAYS run:
+```bash
+git add . && git commit -m "msg" && git push
+```
+Do not wait to be reminded.
+
+## Frontend Build Check
+ALWAYS run `npm run build` (which runs `tsc -b && vite build`) BEFORE committing to typecheck. Fix any errors in your NEW code (existing files may have warnings).
